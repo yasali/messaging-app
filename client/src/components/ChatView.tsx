@@ -1,0 +1,106 @@
+import { useEffect, useRef } from "react";
+import { useQuery, useSubscription } from "@apollo/client/react";
+import { GET_THREAD, MESSAGE_SENT_SUBSCRIPTION } from "../graphql/operations";
+import { useAuth } from "../hooks/useAuth";
+import MessageBubble from "./MessageBubble";
+import MessageInput from "./MessageInput";
+
+interface ChatViewProps {
+  threadId: string;
+}
+
+export default function ChatView({ threadId }: ChatViewProps) {
+  const { user } = useAuth();
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const { data, loading } = useQuery<any>(GET_THREAD, {
+    variables: { id: threadId },
+  });
+
+  useSubscription(MESSAGE_SENT_SUBSCRIPTION, {
+    variables: { threadId },
+    onData: ({ client, data: subData }: any) => {
+      const newMessage = subData.data?.messageSent;
+      if (!newMessage) return;
+
+      // Update the cache with the new message
+      const existing = client.readQuery({
+        query: GET_THREAD,
+        variables: { id: threadId },
+      }) as any;
+
+      if (!existing) return;
+
+      // Avoid duplicates
+      const alreadyExists = existing.thread.messages.some(
+        (m: any) => m.id === newMessage.id
+      );
+      if (alreadyExists) return;
+
+      client.writeQuery({
+        query: GET_THREAD,
+        variables: { id: threadId },
+        data: {
+          thread: {
+            ...existing.thread,
+            messages: [...existing.thread.messages, newMessage],
+          },
+        },
+      });
+    },
+  });
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [data?.thread?.messages]);
+
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center text-gray-500">
+        Loading...
+      </div>
+    );
+  }
+
+  const thread = data?.thread;
+  if (!thread) return null;
+
+  const otherParticipant = thread.participants.find(
+    (p: any) => p.id !== user?.id
+  );
+
+  return (
+    <div className="flex-1 flex flex-col h-full">
+      {/* Header */}
+      <div className="p-4 border-b border-gray-200 bg-white">
+        <h3 className="font-semibold text-gray-900">
+          {otherParticipant?.displayName ?? "Chat"}
+        </h3>
+        <p className="text-xs text-gray-500">@{otherParticipant?.username}</p>
+      </div>
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
+        {thread.messages.length === 0 && (
+          <p className="text-center text-gray-400 mt-8">
+            No messages yet. Say hello!
+          </p>
+        )}
+        {thread.messages.map((message: any) => (
+          <MessageBubble
+            key={message.id}
+            content={message.content}
+            senderName={message.sender.displayName}
+            isMine={message.sender.id === user?.id}
+            timestamp={message.createdAt}
+          />
+        ))}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Input */}
+      <MessageInput threadId={threadId} />
+    </div>
+  );
+}
