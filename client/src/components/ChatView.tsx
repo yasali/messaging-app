@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
-import { useQuery, useSubscription } from "@apollo/client/react";
-import { GET_THREAD, MESSAGE_SENT_SUBSCRIPTION } from "../graphql/operations";
+import { useQuery } from "@apollo/client/react";
+import { GET_THREAD, GetThreadData, GqlUser, GqlMessage } from "../graphql/operations";
 import { useAuth } from "../hooks/useAuth";
 import MessageBubble from "./MessageBubble";
 import MessageInput from "./MessageInput";
@@ -13,47 +13,14 @@ export default function ChatView({ threadId }: ChatViewProps) {
   const { user } = useAuth();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const { data, loading } = useQuery<any>(GET_THREAD, {
+  const { data, loading, error } = useQuery<GetThreadData>(GET_THREAD, {
     variables: { id: threadId },
-  });
-
-  useSubscription(MESSAGE_SENT_SUBSCRIPTION, {
-    variables: { threadId },
-    onData: ({ client, data: subData }: any) => {
-      const newMessage = subData.data?.messageSent;
-      if (!newMessage) return;
-
-      // Update the cache with the new message
-      const existing = client.readQuery({
-        query: GET_THREAD,
-        variables: { id: threadId },
-      }) as any;
-
-      if (!existing) return;
-
-      // Avoid duplicates
-      const alreadyExists = existing.thread.messages.some(
-        (m: any) => m.id === newMessage.id
-      );
-      if (alreadyExists) return;
-
-      client.writeQuery({
-        query: GET_THREAD,
-        variables: { id: threadId },
-        data: {
-          thread: {
-            ...existing.thread,
-            messages: [...existing.thread.messages, newMessage],
-          },
-        },
-      });
-    },
   });
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [data?.thread?.messages]);
+  }, [data?.thread?.messages.length]);
 
   if (loading) {
     return (
@@ -63,11 +30,19 @@ export default function ChatView({ threadId }: ChatViewProps) {
     );
   }
 
+  if (error) {
+    return (
+      <div className="flex-1 flex items-center justify-center text-red-500">
+        Failed to load conversation. Please try again later.
+      </div>
+    );
+  }
+
   const thread = data?.thread;
   if (!thread) return null;
 
   const otherParticipant = thread.participants.find(
-    (p: any) => p.id !== user?.id
+    (p: GqlUser) => p.id !== user?.id
   );
 
   return (
@@ -87,7 +62,7 @@ export default function ChatView({ threadId }: ChatViewProps) {
             No messages yet. Say hello!
           </p>
         )}
-        {thread.messages.map((message: any) => (
+        {thread.messages.map((message: GqlMessage) => (
           <MessageBubble
             key={message.id}
             content={message.content}

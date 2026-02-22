@@ -1,12 +1,18 @@
 import { useState, useCallback } from "react";
 import { AuthContext, AuthUser } from "./hooks/useAuth";
+import { client } from "./apollo";
 import LoginPage from "./pages/LoginPage";
 import MessagingPage from "./pages/MessagingPage";
 
 function App() {
   const [user, setUser] = useState<AuthUser | null>(() => {
-    const stored = localStorage.getItem("user");
-    return stored ? JSON.parse(stored) : null;
+    try {
+      const stored = localStorage.getItem("user");
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      localStorage.removeItem("user");
+      return null;
+    }
   });
   const [token, setToken] = useState<string | null>(
     () => localStorage.getItem("token")
@@ -24,7 +30,7 @@ function App() {
     localStorage.removeItem("user");
     setToken(null);
     setUser(null);
-    window.location.reload();
+    client.clearStore();
   }, []);
 
   return (

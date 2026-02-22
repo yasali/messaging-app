@@ -1,5 +1,5 @@
 import { useQuery } from "@apollo/client/react";
-import { GET_THREADS } from "../graphql/operations";
+import { GET_THREADS, GetThreadsData, GqlUser } from "../graphql/operations";
 import { useAuth } from "../hooks/useAuth";
 
 interface ThreadListProps {
@@ -14,9 +14,7 @@ export default function ThreadList({
   onNewThread,
 }: ThreadListProps) {
   const { user } = useAuth();
-  const { data, loading } = useQuery<any>(GET_THREADS, {
-    pollInterval: 3000,
-  });
+  const { data, loading, error } = useQuery<GetThreadsData>(GET_THREADS);
 
   return (
     <div className="flex flex-col h-full bg-white border-r border-gray-200">
@@ -34,16 +32,21 @@ export default function ThreadList({
         {loading && !data && (
           <p className="p-4 text-gray-500 text-sm">Loading...</p>
         )}
-        {data?.threads.length === 0 && (
+        {error && (
+          <p className="p-4 text-red-500 text-sm">
+            Failed to load conversations. Please try again later.
+          </p>
+        )}
+        {!loading && !error && data?.threads.length === 0 && (
           <p className="p-4 text-gray-500 text-sm">
             No conversations yet. Start one!
           </p>
         )}
-        {data?.threads.map((thread: any) => {
+        {data?.threads.map((thread) => {
           const otherParticipant = thread.participants.find(
-            (p: any) => p.id !== user?.id
+            (p: GqlUser) => p.id !== user?.id
           );
-          const lastMessage = thread.messages[thread.messages.length - 1];
+          const lastMessage = thread.lastMessage;
           const isSelected = thread.id === selectedThreadId;
 
           return (
@@ -60,7 +63,7 @@ export default function ThreadList({
                 </span>
                 {lastMessage && (
                   <span className="text-xs text-gray-400">
-                    {new Date(Number(lastMessage.createdAt)).toLocaleTimeString([], {
+                    {new Date(lastMessage.createdAt).toLocaleTimeString([], {
                       hour: "2-digit",
                       minute: "2-digit",
                     })}

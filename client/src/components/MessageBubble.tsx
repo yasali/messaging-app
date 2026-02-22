@@ -11,7 +11,7 @@ export default function MessageBubble({
   isMine,
   timestamp,
 }: MessageBubbleProps) {
-  const time = new Date(Number(timestamp)).toLocaleTimeString([], {
+  const time = new Date(timestamp).toLocaleTimeString([], {
     hour: "2-digit",
     minute: "2-digit",
   });
