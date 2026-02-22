@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 import { GraphQLError } from "graphql";
 
-const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-me";
+const JWT_SECRET = process.env.JWT_SECRET!;
 
 export interface AuthUser {
   userId: string;
@@ -17,7 +17,16 @@ export function signToken(payload: AuthUser): string {
 }
 
 export function verifyToken(token: string): AuthUser {
-  return jwt.verify(token, JWT_SECRET) as AuthUser;
+  const payload = jwt.verify(token, JWT_SECRET);
+  if (
+    typeof payload === "object" &&
+    payload !== null &&
+    typeof payload.userId === "string" &&
+    typeof payload.username === "string"
+  ) {
+    return { userId: payload.userId, username: payload.username };
+  }
+  throw new Error("Invalid token payload");
 }
 
 export function getUserFromToken(token: string | undefined): AuthUser | null {

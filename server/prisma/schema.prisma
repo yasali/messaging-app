@@ -30,8 +30,8 @@ model ThreadParticipant {
   threadId String
   userId   String
   joinedAt DateTime @default(now())
-  thread   Thread   @relation(fields: [threadId], references: [id])
-  user     User     @relation(fields: [userId], references: [id])
+  thread   Thread   @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([threadId, userId])
   @@index([userId])
@@ -43,8 +43,8 @@ model Message {
   senderId  String
   content   String
   createdAt DateTime @default(now())
-  thread    Thread   @relation(fields: [threadId], references: [id])
-  sender    User     @relation(fields: [senderId], references: [id])
+  thread    Thread   @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  sender    User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
 
   @@index([threadId, createdAt])
 }

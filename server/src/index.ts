@@ -12,7 +12,18 @@ import typeDefs from "./schema/typeDefs";
 import { resolvers } from "./schema/resolvers";
 import { Context, getUserFromToken } from "./context";
 
+function validateEnv() {
+  const required = ["DATABASE_URL", "JWT_SECRET"];
+  const missing = required.filter((key) => !process.env[key]);
+  if (missing.length > 0) {
+    console.error(`Missing required environment variables: ${missing.join(", ")}`);
+    process.exit(1);
+  }
+}
+
 async function main() {
+  validateEnv();
+
   const app = express();
   const httpServer = createServer(app);
 

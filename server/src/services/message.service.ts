@@ -1,9 +1,17 @@
 import { GraphQLError } from "graphql";
 import { prisma } from "../prisma";
 
+const MAX_MESSAGE_LENGTH = 5000;
+
 export async function sendMessage(userId: string, threadId: string, content: string) {
   if (!content.trim()) {
     throw new GraphQLError("Message content cannot be empty", {
+      extensions: { code: "BAD_USER_INPUT" },
+    });
+  }
+
+  if (content.length > MAX_MESSAGE_LENGTH) {
+    throw new GraphQLError(`Message cannot exceed ${MAX_MESSAGE_LENGTH} characters`, {
       extensions: { code: "BAD_USER_INPUT" },
     });
   }
