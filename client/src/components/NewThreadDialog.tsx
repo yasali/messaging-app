@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation } from "@apollo/client/react";
-import { CREATE_THREAD, GET_THREADS } from "../graphql/operations";
+import { CREATE_THREAD, GET_THREADS, CreateThreadData } from "../graphql/operations";
 
 interface NewThreadDialogProps {
   onClose: () => void;
@@ -11,15 +11,23 @@ export default function NewThreadDialog({ onClose, onCreated }: NewThreadDialogP
   const [username, setUsername] = useState("");
   const [error, setError] = useState("");
 
-  const [createThread, { loading }] = useMutation(CREATE_THREAD, {
+  const [createThread, { loading }] = useMutation<CreateThreadData>(CREATE_THREAD, {
     refetchQueries: [{ query: GET_THREADS }],
-    onCompleted: (data: any) => {
+    onCompleted: (data) => {
       onCreated(data.createThread.id);
     },
-    onError: (err: any) => {
+    onError: (err) => {
       setError(err.message);
     },
   });
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,17 +37,27 @@ export default function NewThreadDialog({ onClose, onCreated }: NewThreadDialogP
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm mx-4">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">
+    <div
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="new-thread-title"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm mx-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 id="new-thread-title" className="text-lg font-semibold text-gray-900 mb-4">
           New Conversation
         </h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="new-thread-username" className="block text-sm font-medium text-gray-700 mb-1">
               Username
             </label>
             <input
+              id="new-thread-username"
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}

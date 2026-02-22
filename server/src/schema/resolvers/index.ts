@@ -18,4 +18,10 @@ export const resolvers = {
   Thread: {
     ...threadResolvers.Thread,
   },
+  Message: {
+    ...threadResolvers.Message,
+  },
+  User: {
+    ...threadResolvers.User,
+  },
 };

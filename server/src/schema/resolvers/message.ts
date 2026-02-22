@@ -18,9 +18,21 @@ export const messageResolvers = {
         input.content
       );
 
-      pubsub.publish(`MESSAGE_SENT:${input.threadId}`, {
+      // Publish to per-thread channel (for clients viewing this specific thread)
+      await pubsub.publish(`MESSAGE_SENT:${input.threadId}`, {
         messageSent: message,
       });
+
+      // Publish to per-user channels (for all participants' thread lists)
+      const participants = await prisma.threadParticipant.findMany({
+        where: { threadId: input.threadId },
+        select: { userId: true },
+      });
+      for (const p of participants) {
+        await pubsub.publish(`MESSAGE_RECEIVED:${p.userId}`, {
+          messageReceived: message,
+        });
+      }
 
       return message;
     },
@@ -47,7 +59,17 @@ export const messageResolvers = {
           });
         }
 
-        return pubsub.asyncIterableIterator(`MESSAGE_SENT:${threadId}`);
+        return pubsub.asyncIterator(`MESSAGE_SENT:${threadId}`);
+      },
+    },
+    messageReceived: {
+      subscribe: async (
+        _: unknown,
+        __: unknown,
+        context: Context
+      ) => {
+        const user = requireAuth(context);
+        return pubsub.asyncIterator(`MESSAGE_RECEIVED:${user.userId}`);
       },
     },
   },

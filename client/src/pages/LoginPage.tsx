@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation } from "@apollo/client/react";
-import { LOGIN } from "../graphql/operations";
+import { LOGIN, LoginData } from "../graphql/operations";
 import { useAuth } from "../hooks/useAuth";
 
 export default function LoginPage() {
@@ -9,11 +9,11 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const { login } = useAuth();
 
-  const [loginMutation, { loading }] = useMutation(LOGIN, {
-    onCompleted: (data: any) => {
+  const [loginMutation, { loading }] = useMutation<LoginData>(LOGIN, {
+    onCompleted: (data) => {
       login(data.login.token, data.login.user);
     },
-    onError: (err: any) => {
+    onError: (err) => {
       setError(err.message);
     },
   });
@@ -35,10 +35,11 @@ export default function LoginPage() {
           className="bg-white shadow-md rounded-lg px-8 py-8 space-y-4"
         >
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="login-username" className="block text-sm font-medium text-gray-700 mb-1">
               Username
             </label>
             <input
+              id="login-username"
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
@@ -48,15 +49,16 @@ export default function LoginPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="login-password" className="block text-sm font-medium text-gray-700 mb-1">
               Password
             </label>
             <input
+              id="login-password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-              placeholder="password123"
+              placeholder="Enter your password"
               required
             />
           </div>

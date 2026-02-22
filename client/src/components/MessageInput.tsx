@@ -1,6 +1,13 @@
 import { useState } from "react";
 import { useMutation } from "@apollo/client/react";
-import { SEND_MESSAGE } from "../graphql/operations";
+import {
+  SEND_MESSAGE,
+  GET_THREAD,
+  GET_THREADS,
+  SendMessageData,
+  GetThreadData,
+  GetThreadsData,
+} from "../graphql/operations";
 
 interface MessageInputProps {
   threadId: string;
@@ -9,7 +16,51 @@ interface MessageInputProps {
 export default function MessageInput({ threadId }: MessageInputProps) {
   const [content, setContent] = useState("");
 
-  const [sendMessage, { loading }] = useMutation(SEND_MESSAGE);
+  const [sendMessage, { loading }] = useMutation<SendMessageData>(SEND_MESSAGE, {
+    update(cache, { data }) {
+      if (!data?.sendMessage) return;
+      const newMessage = data.sendMessage;
+
+      // Update the active thread's message list in cache
+      const existing = cache.readQuery<GetThreadData>({
+        query: GET_THREAD,
+        variables: { id: threadId },
+      });
+
+      if (existing) {
+        const alreadyExists = existing.thread.messages.some(
+          (m) => m.id === newMessage.id
+        );
+        if (!alreadyExists) {
+          cache.writeQuery<GetThreadData>({
+            query: GET_THREAD,
+            variables: { id: threadId },
+            data: {
+              thread: {
+                ...existing.thread,
+                messages: [...existing.thread.messages, newMessage],
+              },
+            },
+          });
+        }
+      }
+
+      // Update the thread list's lastMessage for this thread
+      const threadList = cache.readQuery<GetThreadsData>({ query: GET_THREADS });
+      if (threadList) {
+        cache.writeQuery<GetThreadsData>({
+          query: GET_THREADS,
+          data: {
+            threads: threadList.threads.map((t) =>
+              t.id === threadId
+                ? { ...t, lastMessage: newMessage, updatedAt: newMessage.createdAt }
+                : t
+            ),
+          },
+        });
+      }
+    },
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

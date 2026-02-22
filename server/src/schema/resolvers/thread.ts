@@ -1,5 +1,7 @@
 import { Context, requireAuth } from "../../context";
+import { prisma } from "../../prisma";
 import * as threadService from "../../services/thread.service";
+import { ThreadWithRelations, ThreadParticipantWithUser, MessageWithSender } from "../../types";
 
 export const threadResolvers = {
   Query: {
@@ -23,7 +25,25 @@ export const threadResolvers = {
     },
   },
   Thread: {
-    participants: (thread: any) =>
-      thread.participants.map((p: any) => p.user),
+    participants: (thread: ThreadWithRelations) =>
+      thread.participants.map((p: ThreadParticipantWithUser) => p.user),
+    lastMessage: async (thread: ThreadWithRelations) => {
+      // If already loaded (e.g. from getThreadsForUser), use it
+      if (thread._lastMessage !== undefined) return thread._lastMessage;
+      // Otherwise lazy-load from DB
+      return prisma.message.findFirst({
+        where: { threadId: thread.id },
+        orderBy: { createdAt: "desc" },
+        include: { sender: true },
+      });
+    },
+    createdAt: (thread: ThreadWithRelations) => thread.createdAt.toISOString(),
+    updatedAt: (thread: ThreadWithRelations) => thread.updatedAt.toISOString(),
+  },
+  Message: {
+    createdAt: (message: MessageWithSender) => message.createdAt.toISOString(),
+  },
+  User: {
+    createdAt: (user: { createdAt: Date }) => user.createdAt.toISOString(),
   },
 };

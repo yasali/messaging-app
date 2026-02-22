@@ -1,5 +1,59 @@
 import { gql } from "@apollo/client/core";
 
+// --- Shared GraphQL response types ---
+
+export interface GqlUser {
+  id: string;
+  username: string;
+  displayName: string;
+}
+
+export interface GqlMessage {
+  id: string;
+  content: string;
+  sender: GqlUser;
+  threadId: string;
+  createdAt: string;
+}
+
+export interface GqlThread {
+  id: string;
+  participants: GqlUser[];
+  messages?: GqlMessage[];
+  lastMessage?: GqlMessage | null;
+  updatedAt: string;
+}
+
+export interface LoginData {
+  login: { token: string; user: GqlUser };
+}
+
+export interface GetThreadsData {
+  threads: GqlThread[];
+}
+
+export interface GqlThreadDetail extends GqlThread {
+  messages: GqlMessage[];
+}
+
+export interface GetThreadData {
+  thread: GqlThreadDetail;
+}
+
+export interface CreateThreadData {
+  createThread: GqlThread;
+}
+
+export interface SendMessageData {
+  sendMessage: GqlMessage;
+}
+
+export interface MessageReceivedData {
+  messageReceived: GqlMessage;
+}
+
+// --- Operations ---
+
 export const LOGIN = gql`
   mutation Login($input: LoginInput!) {
     login(input: $input) {
@@ -13,16 +67,6 @@ export const LOGIN = gql`
   }
 `;
 
-export const ME = gql`
-  query Me {
-    me {
-      id
-      username
-      displayName
-    }
-  }
-`;
-
 export const GET_THREADS = gql`
   query GetThreads {
     threads {
@@ -32,7 +76,7 @@ export const GET_THREADS = gql`
         username
         displayName
       }
-      messages {
+      lastMessage {
         id
         content
         sender {
@@ -40,6 +84,7 @@ export const GET_THREADS = gql`
           username
           displayName
         }
+        threadId
         createdAt
       }
       updatedAt
@@ -81,7 +126,7 @@ export const CREATE_THREAD = gql`
         username
         displayName
       }
-      messages {
+      lastMessage {
         id
         content
         sender {
@@ -89,6 +134,7 @@ export const CREATE_THREAD = gql`
           username
           displayName
         }
+        threadId
         createdAt
       }
       updatedAt
@@ -112,9 +158,9 @@ export const SEND_MESSAGE = gql`
   }
 `;
 
-export const MESSAGE_SENT_SUBSCRIPTION = gql`
-  subscription MessageSent($threadId: ID!) {
-    messageSent(threadId: $threadId) {
+export const MESSAGE_RECEIVED_SUBSCRIPTION = gql`
+  subscription MessageReceived {
+    messageReceived {
       id
       content
       sender {
